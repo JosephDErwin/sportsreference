@@ -30,7 +30,7 @@ def mock_pyquery(url):
     return MockPQ(read_file('altuvjo01'))
 
 
-class TestMLBPlayer:
+class TestMLBFielder:
     @mock.patch('requests.get', side_effect=mock_pyquery)
     def setup_method(self, *args, **kwargs):
         self.results_career = {
@@ -169,33 +169,6 @@ class TestMLBPlayer:
             'total_fielding_runs_above_average_per_innings': 12,
             'triples': 4,
             'weight': 165,
-            # Properties specific to pitchers
-            'balks': None,
-            'bases_on_balls_given': None,
-            'bases_on_balls_given_per_nine_innings': None,
-            'batters_faced': None,
-            'batters_struckout_per_nine_innings': None,
-            'earned_runs_allowed': None,
-            'era': None,
-            'era_plus': None,
-            'fielding_independent_pitching': None,
-            'games_finished': None,
-            'hits_against_per_nine_innings': None,
-            'hits_allowed': None,
-            'home_runs_against_per_nine_innings': None,
-            'home_runs_allowed': None,
-            'intentional_bases_on_balls_given': None,
-            'losses': None,
-            'runs_allowed': None,
-            'saves': None,
-            'shutouts': None,
-            'strikeouts': None,
-            'strikeouts_thrown_per_walk': None,
-            'times_hit_player': None,
-            'whip': None,
-            'wild_pitches': None,
-            'win_percentage': None,
-            'wins': None
         }
 
         self.player = Player('altuvjo01')
@@ -281,34 +254,7 @@ class TestMLBPlayer:
              'total_fielding_runs_above_average': 23,
              'total_fielding_runs_above_average_per_innings': 3,
              'triples': 25,
-             'weight': 165,
-             # Properties specific to pitchers
-             'balks': None,
-             'bases_on_balls_given': None,
-             'bases_on_balls_given_per_nine_innings': None,
-             'batters_faced': None,
-             'batters_struckout_per_nine_innings': None,
-             'earned_runs_allowed': None,
-             'era': None,
-             'era_plus': None,
-             'fielding_independent_pitching': None,
-             'games_finished': None,
-             'hits_against_per_nine_innings': None,
-             'hits_allowed': None,
-             'home_runs_against_per_nine_innings': None,
-             'home_runs_allowed': None,
-             'intentional_bases_on_balls_given': None,
-             'losses': None,
-             'runs_allowed': None,
-             'saves': None,
-             'shutouts': None,
-             'strikeouts': None,
-             'strikeouts_thrown_per_walk': None,
-             'times_hit_player': None,
-             'whip': None,
-             'wild_pitches': None,
-             'win_percentage': None,
-             'wins': None},
+             'weight': 165},
             {'assists': 351,
              'at_bats': 590,
              'bases_on_balls': 58,
@@ -440,34 +386,7 @@ class TestMLBPlayer:
              'total_fielding_runs_above_average': 6,
              'total_fielding_runs_above_average_per_innings': 5,
              'triples': 5,
-             'weight': 165,
-             # Properties specific to pitchers
-             'balks': None,
-             'bases_on_balls_given': None,
-             'bases_on_balls_given_per_nine_innings': None,
-             'batters_faced': None,
-             'batters_struckout_per_nine_innings': None,
-             'earned_runs_allowed': None,
-             'era': None,
-             'era_plus': None,
-             'fielding_independent_pitching': None,
-             'games_finished': None,
-             'hits_against_per_nine_innings': None,
-             'hits_allowed': None,
-             'home_runs_against_per_nine_innings': None,
-             'home_runs_allowed': None,
-             'intentional_bases_on_balls_given': None,
-             'losses': None,
-             'runs_allowed': None,
-             'saves': None,
-             'shutouts': None,
-             'strikeouts': None,
-             'strikeouts_thrown_per_walk': None,
-             'times_hit_player': None,
-             'whip': None,
-             'wild_pitches': None,
-             'win_percentage': None,
-             'wins': None}
+             'weight': 165}
         ]
         indices = ['Career', '2017', '2016']
 

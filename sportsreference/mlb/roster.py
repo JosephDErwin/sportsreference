@@ -73,7 +73,7 @@ def _most_recent_decorator(func):
     return wrapper
 
 
-class Player(object):
+class PlayerBaseClass(object):
     """
     Get player information and stats for all seasons.
 
@@ -89,17 +89,22 @@ class Player(object):
     Parameters
     ----------
     player_id : string
-        A player's ID according to basketball-reference.com, such as
-        'altuvjo01' for Jose Altuve. The player ID can be found by navigating
-        to the player's stats page and getting the string between the final
-        slash and the '.html' in the URL. In general, the ID is in the format
+        A player's ID according to baseball-reference.com, such as 'altuvjo01'
+        for Jose Altuve. The player ID can be found by navigating to the
+        player's stats page and getting the string between the final slash and
+        the '.shtml' in the URL. In general, the ID is in the format
         'LLLLLFFNN' where 'LLLLL' are the first 5 letters in the player's last
-        name, 'FF', are the first 2 letters in the player's first name, and
-        'NN' is a number starting at '01' for the first time that player ID has
-        been used and increments by 1 for every successive player.
+        name, 'FF' are the first 2 letters in the player's first name, and 'NN'
+        is a number starting at '01' for the first time that player ID has been
+        used and increments by 1 for every successive player.
+    player_pq : PyQuery object
+        A PyQuery object representing the player's HTML page.
     """
-    def __init__(self, player_id):
+    _subclasses = {}
+
+    def __init__(self, player_id, player_pq):
         self._most_recent_season = ''
+        self._player_pq = player_pq
         self._index = None
         self._player_id = player_id
         self._season = None
@@ -199,42 +204,12 @@ class Player(object):
         self._parse_player_data()
         self._find_initial_index()
 
-    def _build_url(self):
-        """
-        Create the player's URL to pull stats from.
-
-        The player's URL requires the first letter of the player's last name
-        followed by the player ID.
-
-        Returns
-        -------
-        string
-            The string URL for the player's stats page.
-        """
-        # The first letter of the player's last name is used to sort the player
-        # list and is a part of the URL.
-        first_character = self._player_id[0]
-        return PLAYER_URL % (first_character, self._player_id)
-
-    def _retrieve_html_page(self):
-        """
-        Download the requested player's stats page.
-
-        Download the requested page and strip all of the comment tags before
-        returning a pyquery object which will be used to parse the data.
-
-        Returns
-        -------
-        PyQuery object
-            The requested page is returned as a queriable PyQuery object with
-            the comment tags removed.
-        """
-        url = self._build_url()
-        try:
-            url_data = pq(url)
-        except:
-            return None
-        return pq(utils._remove_html_comment_tags(url_data))
+    @classmethod
+    def _register_subclass(cls, player_type):
+        def decorator(subclass):
+            cls._subclasses[player_type] = subclass
+            return subclass
+        return decorator
 
     def _parse_season(self, row):
         """
@@ -496,12 +471,13 @@ class Player(object):
         to parse the data from the HTML page and set attribute value with the
         result.
         """
-        player_info = self._retrieve_html_page()
+        player_info = self._player_pq
         all_stats_dict = self._combine_all_stats(player_info)
 
         for field in self.__dict__:
             short_field = str(field)[1:]
             if short_field == 'player_id' or \
+               short_field == 'player_pq' or \
                short_field == 'index' or \
                short_field == 'most_recent_season':
                 continue
@@ -578,6 +554,98 @@ class Player(object):
             index += 1
         return self
 
+    @property
+    def player_id(self):
+        """
+        Returns a ``string`` of the player's ID on sports-reference, such as
+        'altuvjo01' for Jose Altuve.
+        """
+        return self._player_id
+
+    @property
+    def season(self):
+        """
+        Returns a ``string`` of the season in the format 'YYYY', such as
+        '2017'. If no season was requsted, the career stats will be
+        returned for the player and the season will default to 'Career'.
+        """
+        return self._season[self._index]
+
+    @property
+    def name(self):
+        """
+        Returns a ``string`` of the player's name, such as 'Jose Altuve'.
+        """
+        return self._name
+
+    @_most_recent_decorator
+    def team_abbreviation(self):
+        """
+        Returns a ``string`` of the team's abbreviation, such as 'HOU' for the
+        Houston Astros.
+        """
+        return self._team_abbreviation
+
+    @_most_recent_decorator
+    def position(self):
+        """
+        Returns a ``string`` constant of the player's primary position.
+        """
+        return self._position
+
+    @property
+    def height(self):
+        """
+        Returns a ``string`` of the players height in the format "feet-inches".
+        """
+        return self._height
+
+    @property
+    def weight(self):
+        """
+        Returns an ``int`` of the player's weight in pounds.
+        """
+        return int(self._weight.replace('lb', ''))
+
+    @property
+    def birth_date(self):
+        """
+        Returns a ``datetime`` object of the day and year the player was born.
+        """
+        return self._birth_date
+
+    @property
+    def nationality(self):
+        """
+        Returns a ``string`` constant denoting which country the player
+        originiates from.
+        """
+        return self._nationality
+
+    @property
+    def contract(self):
+        """
+        Returns a ``dictionary`` of the player's contract where each key is a
+        ``string`` of the year, such as '2017' and each value is a
+        ``dictionary`` with the ``string`` key-value pairs of the player's age,
+        team name, and salary.
+        """
+        return self._contract
+
+
+@PlayerBaseClass._register_subclass('fielder')
+class Fielder(PlayerBaseClass):
+    """
+    Fielder extends the player stats to include fielder-specific categories.
+
+    The Fielder class inherits the PlayerBaseClass. The Fielder class should
+    not be called directly as it is intended for the Player pseudo-class to be
+    used to determine which inherited class should be called. This class is
+    called by Player automatically if it determines the player's position is
+    not listed as a pitcher. Since this class inherits PlayerBaseClass, all of
+    the stats contained in that class is also accessible from any instances of
+    the Fielder class.
+    """
     def _dataframe_fields(self):
         """
         Creates a dictionary of all fields to include with DataFrame.
@@ -667,40 +735,7 @@ class Player(object):
             'total_fielding_runs_above_average_per_innings':
             self.total_fielding_runs_above_average_per_innings,
             'triples': self.triples,
-            'weight': self.weight,
-            # Properties specific to pitchers
-            'balks': self.balks,
-            'bases_on_balls_given': self.bases_on_balls_given,
-            'bases_on_balls_given_per_nine_innings':
-            self.bases_on_balls_given_per_nine_innings,
-            'batters_faced': self.batters_faced,
-            'batters_struckout_per_nine_innings':
-            self.batters_struckout_per_nine_innings,
-            'earned_runs_allowed': self.earned_runs_allowed,
-            'era': self.era,
-            'era_plus': self.era_plus,
-            'fielding_independent_pitching':
-            self.fielding_independent_pitching,
-            'games_finished': self.games_finished,
-            'hits_against_per_nine_innings':
-            self.hits_against_per_nine_innings,
-            'hits_allowed': self.hits_allowed,
-            'home_runs_against_per_nine_innings':
-            self.home_runs_against_per_nine_innings,
-            'home_runs_allowed': self.home_runs_allowed,
-            'intentional_bases_on_balls_given':
-            self.intentional_bases_on_balls_given,
-            'losses': self.losses,
-            'runs_allowed': self.runs_allowed,
-            'saves': self.saves,
-            'shutouts': self.shutouts,
-            'strikeouts': self.strikeouts,
-            'strikeouts_thrown_per_walk': self.strikeouts_thrown_per_walk,
-            'times_hit_player': self.times_hit_player,
-            'whip': self.whip,
-            'wild_pitches': self.wild_pitches,
-            'win_percentage': self.win_percentage,
-            'wins': self.wins
+            'weight': self.weight
         }
         return fields_to_include
 
@@ -720,84 +755,6 @@ class Player(object):
             indices.append(season)
         self._index = temp_index
         return pd.DataFrame(rows, index=[indices])
-
-    @property
-    def player_id(self):
-        """
-        Returns a ``string`` of the player's ID on sports-reference, such as
-        'altuvjo01' for Jose Altuve.
-        """
-        return self._player_id
-
-    @property
-    def season(self):
-        """
-        Returns a ``string`` of the season in the format 'YYYY', such as
-        '2017'. If no season was requsted, the career stats will be
-        returned for the player and the season will default to 'Career'.
-        """
-        return self._season[self._index]
-
-    @property
-    def name(self):
-        """
-        Returns a ``string`` of the player's name, such as 'Jose Altuve'.
-        """
-        return self._name
-
-    @_most_recent_decorator
-    def team_abbreviation(self):
-        """
-        Returns a ``string`` of the team's abbreviation, such as 'HOU' for the
-        Houston Astros.
-        """
-        return self._team_abbreviation
-
-    @_most_recent_decorator
-    def position(self):
-        """
-        Returns a ``string`` constant of the player's primary position.
-        """
-        return self._position
-
-    @property
-    def height(self):
-        """
-        Returns a ``string`` of the players height in the format "feet-inches".
-        """
-        return self._height
-
-    @property
-    def weight(self):
-        """
-        Returns an ``int`` of the player's weight in pounds.
-        """
-        return int(self._weight.replace('lb', ''))
-
-    @property
-    def birth_date(self):
-        """
-        Returns a ``datetime`` object of the day and year the player was born.
-        """
-        return self._birth_date
-
-    @property
-    def nationality(self):
-        """
-        Returns a ``string`` constant denoting which country the player
-        originiates from.
-        """
-        return self._nationality
-
-    @property
-    def contract(self):
-        """
-        Returns a ``dictionary`` of the player's contract where each key is a
-        ``string`` of the year, such as '2017' and each value is a
-        ``dictionary`` with the ``string`` key-value pairs of the player's age,
-        team name, and salary.
-        """
-        return self._contract
 
     @_int_property_decorator
     def games(self):
@@ -1240,6 +1197,163 @@ class Player(object):
         """
         return self._games_pinch_runner
 
+
+@PlayerBaseClass._register_subclass('pitcher')
+class Pitcher(Fielder):
+    """
+    Pitcher extends the player stats to include pitcher-specific categories.
+
+    The Pitcher class inherits the Fielder class which inherits the
+    PlayerBaseClass. The Pitcher class should not be called directly as it is
+    intended for the Player pseudo-class to be used to determine which
+    inherited class should be called. This class is called by Player
+    automatically if it determines the player's position is listed as a
+    pitcher. Since this class inherits both the Fielder and PlayerBaseClass
+    classes, all of the stats contained in those classes are also accessible
+    from any instances of the Pitcher class.
+    """
+    def _dataframe_fields(self):
+        """
+        Creates a dictionary of all fields to include with DataFrame.
+
+        With the result of the calls to class properties changing based on the
+        class index value, the dictionary should be regenerated every time the
+        index is changed when the dataframe property is requested.
+
+        Returns
+        -------
+        dictionary
+            Returns a dictionary where the keys are the shortened ``string``
+            attribute names and the values are the actual value for each
+            attribute for the specified index.
+        """
+        fields_to_include = {
+            'assists': self.assists,
+            'at_bats': self.at_bats,
+            'bases_on_balls': self.bases_on_balls,
+            'batting_average': self.batting_average,
+            'birth_date': self.birth_date,
+            'complete_games': self.complete_games,
+            'defensive_chances': self.defensive_chances,
+            'defensive_runs_saved_above_average':
+            self.defensive_runs_saved_above_average,
+            'defensive_runs_saved_above_average_per_innings':
+            self.defensive_runs_saved_above_average_per_innings,
+            'double_plays_turned': self.double_plays_turned,
+            'doubles': self.doubles,
+            'errors': self.errors,
+            'fielding_percentage': self.fielding_percentage,
+            'games': self.games,
+            'games_catcher': self.games_catcher,
+            'games_center_fielder': self.games_center_fielder,
+            'games_designated_hitter': self.games_designated_hitter,
+            'games_first_baseman': self.games_first_baseman,
+            'games_in_batting_order': self.games_in_batting_order,
+            'games_in_defensive_lineup': self.games_in_defensive_lineup,
+            'games_left_fielder': self.games_left_fielder,
+            'games_outfielder': self.games_outfielder,
+            'games_pinch_hitter': self.games_pinch_hitter,
+            'games_pinch_runner': self.games_pinch_runner,
+            'games_pitcher': self.games_pitcher,
+            'games_right_fielder': self.games_right_fielder,
+            'games_second_baseman': self.games_second_baseman,
+            'games_shortstop': self.games_shortstop,
+            'games_started': self.games_started,
+            'games_third_baseman': self.games_third_baseman,
+            'grounded_into_double_plays': self.grounded_into_double_plays,
+            'height': self.height,
+            'hits': self.hits,
+            'home_runs': self.home_runs,
+            'innings_played': self.innings_played,
+            'intentional_bases_on_balls': self.intentional_bases_on_balls,
+            'league_fielding_percentage': self.league_fielding_percentage,
+            'league_range_factor_per_game': self.league_range_factor_per_game,
+            'league_range_factor_per_nine_innings':
+            self.league_range_factor_per_nine_innings,
+            'name': self.name,
+            'nationality': self.nationality,
+            'on_base_percentage': self.on_base_percentage,
+            'on_base_plus_slugging_percentage':
+            self.on_base_plus_slugging_percentage,
+            'on_base_plus_slugging_percentage_plus':
+            self.on_base_plus_slugging_percentage_plus,
+            'plate_appearances': self.plate_appearances,
+            'player_id': self.player_id,
+            'position': self.position,
+            'putouts': self.putouts,
+            'range_factor_per_game': self.range_factor_per_game,
+            'range_factor_per_nine_innings':
+            self.range_factor_per_nine_innings,
+            'runs': self.runs,
+            'runs_batted_in': self.runs_batted_in,
+            'sacrifice_flies': self.sacrifice_flies,
+            'sacrifice_hits': self.sacrifice_hits,
+            'season': self.season,
+            'slugging_percentage': self.slugging_percentage,
+            'stolen_bases': self.stolen_bases,
+            'team_abbreviation': self.team_abbreviation,
+            'times_caught_stealing': self.times_caught_stealing,
+            'times_hit_by_pitch': self.times_hit_by_pitch,
+            'times_struck_out': self.times_struck_out,
+            'total_bases': self.total_bases,
+            'total_fielding_runs_above_average':
+            self.total_fielding_runs_above_average,
+            'total_fielding_runs_above_average_per_innings':
+            self.total_fielding_runs_above_average_per_innings,
+            'triples': self.triples,
+            'weight': self.weight,
+            'balks': self.balks,
+            'bases_on_balls_given': self.bases_on_balls_given,
+            'bases_on_balls_given_per_nine_innings':
+            self.bases_on_balls_given_per_nine_innings,
+            'batters_faced': self.batters_faced,
+            'batters_struckout_per_nine_innings':
+            self.batters_struckout_per_nine_innings,
+            'earned_runs_allowed': self.earned_runs_allowed,
+            'era': self.era,
+            'era_plus': self.era_plus,
+            'fielding_independent_pitching':
+            self.fielding_independent_pitching,
+            'games_finished': self.games_finished,
+            'hits_against_per_nine_innings':
+            self.hits_against_per_nine_innings,
+            'hits_allowed': self.hits_allowed,
+            'home_runs_against_per_nine_innings':
+            self.home_runs_against_per_nine_innings,
+            'home_runs_allowed': self.home_runs_allowed,
+            'intentional_bases_on_balls_given':
+            self.intentional_bases_on_balls_given,
+            'losses': self.losses,
+            'runs_allowed': self.runs_allowed,
+            'saves': self.saves,
+            'shutouts': self.shutouts,
+            'strikeouts': self.strikeouts,
+            'strikeouts_thrown_per_walk': self.strikeouts_thrown_per_walk,
+            'times_hit_player': self.times_hit_player,
+            'whip': self.whip,
+            'wild_pitches': self.wild_pitches,
+            'win_percentage': self.win_percentage,
+            'wins': self.wins
+        }
+        return fields_to_include
+
+    @property
+    def dataframe(self):
+        """
+        Returns a ``pandas DataFrame`` containing all other relevant class
+        properties and values where each index is a different season plus the
+        career stats.
+        """
+        temp_index = self._index
+        rows = []
+        indices = []
+        for season in self._season:
+            self._index = self._season.index(season)
+            rows.append(self._dataframe_fields())
+            indices.append(season)
+        self._index = temp_index
+        return pd.DataFrame(rows, index=[indices])
+
     @_int_property_decorator
     def wins(self):
         """
@@ -1443,6 +1557,92 @@ class Player(object):
         per the number of walks given.
         """
         return self._strikeouts_thrown_per_walk
+
+
+def _build_url(player_id):
+    """
+    Create the player's URL to pull stats from.
+
+    The player's URL requires the first letter of the player's last name
+    followed by the player ID.
+
+    Returns
+    -------
+    string
+        The string URL for the player's stats page.
+    """
+    # The first letter of the player's last name is used to sort the player
+    # list and is a part of the URL.
+    first_character = player_id[0]
+    return PLAYER_URL % (first_character, player_id)
+
+
+def _retrieve_html_page(player_id):
+    """
+    Download the requested player's stats page.
+
+    Download the requested page and strip all of the comment tags before
+    returning a pyquery object which will be used to parse the data.
+
+    Returns
+    -------
+    PyQuery object
+        The requested page is returned as a queriable PyQuery object with the
+        comment tags removed.
+    """
+    url = _build_url(player_id)
+    try:
+        url_data = pq(url)
+    except:
+        return None
+    return pq(utils._remove_html_comment_tags(url_data))
+
+
+def Player(player_id):
+    """
+    A pseudo-class which returns an instance of Fielder or Pitcher.
+
+    Player is a pseudo-class which should be called to determine which subclass
+    should be used and returns an instance of that subclass. It first builds
+    and reads the player's HTML stats page and then determines the player's
+    primary position as listed on the top of the page. If the player is
+    identified as a pitcher, the Player function will return an instance of the
+    Pitcher class. For all other positions, Player will return an instance of
+    the Fielder class.
+
+    This function should be used in-place of Fielder, Pitcher, and
+    PlayerBaseClass as those classes rely on informtaion from this function.
+
+    Parameters
+    ----------
+    player_id : string
+        A player's ID according to baseball-reference.com, such as 'altuvjo01'
+        for Jose Altuve. The player ID can be found by navigating to the
+        player's stats page and getting the string between the final slash and
+        the '.shtml' in the URL. In general, the ID is in the format
+        'LLLLLFFNN' where 'LLLLL' are the first 5 letters in the player's last
+        name, 'FF' are the first 2 letters in the player's first name, and 'NN'
+        is a number starting at '01' for the first time that player ID has been
+        used and increments by 1 for every successive player.
+
+    Returns
+    -------
+    Pitcher class instance or Fielder class instance
+        Returns an instance of the Pitcher class if the player is listed as a
+        pitcher or returns an instance of Fielder for all other players.
+    """
+    player_page = _retrieve_html_page(player_id)
+    player_pq = pq(player_page)
+    paragraphs = player_pq('p').items()
+    position = ''
+    for item in paragraphs:
+        if '<strong>Position:</strong>' in str(item):
+            position = item.text().replace('Position: ', '')
+            break
+    if position.lower() == 'pitcher':
+        return Pitcher(player_id, player_pq)
+    else:
+        return Fielder(player_id, player_pq)
 
 
 class Roster(object):
