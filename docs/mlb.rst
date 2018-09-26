@@ -46,10 +46,14 @@ Roster
 ------
 
 The Roster module contains detailed player information, allowing each player to
-be queried by their player ID using the ``Player`` class which has detailed
-information ranging from career home runs to single-season stats and player
-height, weight, and nationality. The following is an example on collecting
-career information for José Altuve.
+be queried by their player ID using the ``Player`` pseudo-class which returns an
+instance of either the ``Fielder`` or ``Pitcher`` class depending on the
+player's listed position. Only the ``Player`` function should be used to
+retrieve an instance of the player instead of pulling directly from the
+``Fielder``, ``Pitcher``, or ``PlayerBaseClass`` classes. The returned instance
+contains detailed information ranging from career home runs to single-season
+stats and player height, weight, and nationality. The following is an example on
+collecting career information for José Altuve.
 
 .. code-block:: python
 
@@ -60,6 +64,19 @@ career information for José Altuve.
     print(altuve.hits)  # Prints Altuve's career hits total
     # Prints a Pandas DataFrame of all relevant stats per season for Altuve
     print(altuve.dataframe)
+
+The process of getting information on pitchers is the same as with fielders
+above:
+
+.. code-block:: python
+
+    from sportsreference.mlb.roster import Player
+
+    verlander = Player('verlaju01')
+    print(verlander.name)  # Prints 'Justin Verlander'
+    print(verlander.wins)  # Prints Verlander's career wins
+    # Prints a Pandas DataFrame of all relevant stats per season for Verlander
+    print(verlander.dataframe)
 
 By default, the player's career stats are returned whenever a property is
 called. To get stats for a specific season, call the class instance with the
