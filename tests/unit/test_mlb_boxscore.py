@@ -367,3 +367,23 @@ class TestMLBBoxscores:
         games = self.boxscores._extract_game_info([mock_html])
 
         assert len(games) == 0
+
+    def test_boxscore_with_no_score_returns_none(self):
+        mock_html = pq("""<table class="teams">
+<tbody>
+<tr>
+    <td><a href="/teams/TEX/2017.shtml">Texas Rangers</a></td>
+    <td class="right gamelink">
+        <a href="/boxes/BAL/BAL201707170.shtml">Final</a>
+    </td>
+</tr>
+<tr>
+    <td class="right">
+    </td>
+</tr>
+</tbody>
+</table>""")
+        games = self.boxscores._extract_game_info([mock_html])
+
+        assert games == False
+        assert len(games) == 0

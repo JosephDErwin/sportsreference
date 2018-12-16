@@ -917,8 +917,13 @@ class Boxscores:
         # The home team is the last (3rd) link in the boxscore
         home = links[-1]
         scores = re.findall(r'<td class="right">\d+</td>', str(game))
-        away_score = self._get_score(scores[0])
-        home_score = self._get_score(scores[1])
+        away_score = None
+        home_score = None
+        # If the game hasn't started or hasn't been updated on sports-reference
+        # yet, no score will be shown and therefore can't be parsed.
+        if len(scores) == 2:
+            away_score = self._get_score(scores[0])
+            home_score = self._get_score(scores[1])
         away_name, away_abbr = self._get_name(away)
         home_name, home_abbr = self._get_name(home)
         return (away_name, away_abbr, away_score, home_name, home_abbr,

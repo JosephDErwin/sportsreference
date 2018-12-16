@@ -1232,8 +1232,13 @@ class Boxscores:
         # The home team is the last (3rd) link in the boxscore
         home = links[-1]
         scores = re.findall(r'<td class="right">\d+</td>', str(game))
-        away_score = self._get_score(scores[0])
-        home_score = self._get_score(scores[1])
+        away_score = None
+        home_score = None
+        # If the game hasn't started or hasn't been updated on sports-reference
+        # yet, no score will be shown and therefore can't be parsed.
+        if len(scores) == 2:
+            away_score = self._get_score(scores[0])
+            home_score = self._get_score(scores[1])
         away_name, away_abbr = self._get_name(away)
         home_name, home_abbr = self._get_name(home)
         return (away_name, away_abbr, away_score, home_name, home_abbr,
@@ -1295,19 +1300,23 @@ class Boxscores:
             boxscore_url = game('td[class="right gamelink"] a')
             boxscore_uri = self._get_boxscore_uri(boxscore_url)
             winner = self._get_team_results(game('tr[class="winner"]'))
-            # Occurs when information couldn't be parsed from the boxscore and
-            # the game should be skipped to avoid conflicts populating the
-            # game information.
+            # Occurs when information couldn't be parsed from the boxscore or
+            # the game hasn't occurred yet. In this case, the winner should be
+            # None to avoid conflicts.
             if not winner:
-                continue
-            winning_name, winning_abbreviation = winner
+                winning_name = None
+                winning_abbreviation = None
+            else:
+                winning_name, winning_abbreviation = winner
             loser = self._get_team_results(game('tr[class="loser"]'))
-            # Occurs when information couldn't be parsed from the boxscore and
-            # the game should be skipped to avoid conflicts populating the
-            # game information.
+            # Occurs when information couldn't be parsed from the boxscore or
+            # the game hasn't occurred yet. In this case, the winner should be
+            # None to avoid conflicts.
             if not loser:
-                continue
-            losing_name, losing_abbreviation = loser
+                losing_name = None
+                losing_abbreviation = None
+            else:
+                losing_name, losing_abbreviation = loser
             game_info = {
                 'boxscore': boxscore_uri,
                 'away_name': away_name,
