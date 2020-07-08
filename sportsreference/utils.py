@@ -39,7 +39,7 @@ def _todays_date():
     return datetime.now()
 
 
-def _url_exists(url):
+def _url_exists(url, allow_redirects=True):
     """
     Determine if a URL is valid and exists.
 
